@@ -1,0 +1,60 @@
+services:
+
+  paperless-webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-webserver-1
+    restart: unless-stopped
+    depends_on:
+      - paperless-db
+      - paperless-broker
+      - paperless-gotenberg
+      - paperless-tika
+    ports:
+      - ${PAPERLESS_PORT:-8000}:8000
+    environment:
+      - PAPERLESS_REDIS=redis://paperless-broker-1:6379
+      - PAPERLESS_DBHOST=paperless-db-1
+      - PAPERLESS_TIKA_ENABLED=1
+      - PAPERLESS_TIKA_ENDPOINT=http://paperless-tika-1:9998
+      - PAPERLESS_TIKA_GOTENBERG_ENDPOINT=http://paperless-gotenberg-1:3000
+      - PAPERLESS_URL=${PAPERLESS_URL}
+      - PAPERLESS_TIME_ZONE=${TZ:-Australia/Brisbane}
+      - PAPERLESS_OCR_LANGUAGE=eng
+      - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
+    volumes:
+      - ${PAPERLESS_DATA_PATH}/data:/usr/src/paperless/data
+      - ${PAPERLESS_DATA_PATH}/media:/usr/src/paperless/media
+      - ${PAPERLESS_DATA_PATH}/consume:/usr/src/paperless/consume
+      - ${PAPERLESS_DATA_PATH}/export:/usr/src/paperless/export
+
+  paperless-db:
+    image: postgres:15
+    container_name: paperless-db-1
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-paperless}
+      - POSTGRES_USER=${POSTGRES_USER:-paperless}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - paperless_pgdata:/var/lib/postgresql/data
+
+  paperless-broker:
+    image: redis:7
+    container_name: paperless-broker-1
+    restart: unless-stopped
+    volumes:
+      - paperless_redisdata:/data
+
+  paperless-gotenberg:
+    image: gotenberg/gotenberg:8.25
+    container_name: paperless-gotenberg-1
+    restart: unless-stopped
+
+  paperless-tika:
+    image: apache/tika:latest
+    container_name: paperless-tika-1
+    restart: unless-stopped
+
+volumes:
+  paperless_pgdata:
+  paperless_redisdata:

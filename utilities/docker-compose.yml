@@ -1,0 +1,85 @@
+# Utility services — run individually or together.
+# Portainer and Glance are lightweight enough to run on any server.
+
+services:
+
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - ${PORTAINER_HTTP_PORT:-9000}:9000
+      - ${PORTAINER_HTTPS_PORT:-9443}:9443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+  glance:
+    image: glanceapp/glance
+    container_name: glance
+    restart: unless-stopped
+    ports:
+      - ${GLANCE_PORT:-3005}:8080
+    volumes:
+      - ${GLANCE_CONFIG_PATH}:/app/config/glance.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  organizr:
+    image: organizr/organizr:latest
+    container_name: organizr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${ORGANIZR_CONFIG_PATH}:/config
+    ports:
+      - ${ORGANIZR_PORT:-8888}:80
+    restart: unless-stopped
+
+  monitorr:
+    image: monitorr/monitorr:latest
+    container_name: monitorr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${MONITORR_CONFIG_PATH}:/app/www/assets/data
+    ports:
+      - ${MONITORR_PORT:-8083}:80
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.40
+    command: --interval 86400 --cleanup
+
+  twingate:
+    image: twingate/connector:1
+    container_name: twingate
+    restart: unless-stopped
+    environment:
+      - TWINGATE_NETWORK=${TWINGATE_NETWORK}
+      - TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
+      - TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
+      - TWINGATE_LABEL_HOSTNAME=${TWINGATE_LABEL_HOSTNAME:-homelab}
+      - TWINGATE_LABEL_DEPLOYED_BY=docker
+
+  anisette:
+    image: dadoum/anisette-v3-server:latest
+    container_name: anisette
+    restart: unless-stopped
+    ports:
+      - ${ANISETTE_PORT:-6969}:6969
+    volumes:
+      - anisette_data:/home/Alcoholic/.config/anisette-v3
+
+volumes:
+  portainer_data:
+  anisette_data:

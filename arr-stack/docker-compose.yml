@@ -1,0 +1,126 @@
+# Arr Stack — media automation routed through Gluetun VPN
+# All arr services use network_mode: service:gluetun so all traffic exits via VPN.
+
+services:
+
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.1
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=${TZ:-Australia/Brisbane}
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES:-Sweden}
+      - SERVER_GROUPS=${SERVER_GROUPS:-P2P}
+      - VPN_INTERFACE=wg0
+      - FIREWALL_OUTBOUND_SUBNETS=${LOCAL_SUBNET:-192.168.1.0/24}
+      - INTERFACE=${HOST_INTERFACE:-eth0}
+      - FIREWALL_INPUT_PORTS=6881
+    ports:
+      - 8090:8090   # qBittorrent WebUI
+      - 6881:6881   # Torrent
+      - 6881:6881/udp
+      - 8989:8989   # Sonarr
+      - 7878:7878   # Radarr
+      - 9696:9696   # Prowlarr
+      - 9117:9117   # Jackett
+      - 8191:8191   # FlareSolverr
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+      - WEBUI_PORT=8090
+    volumes:
+      - ${CONFIG_BASE}/qbittorrent/config:/config
+      - ${DOWNLOADS_PATH}:/downloads
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${CONFIG_BASE}/sonarr/config:/config
+      - ${TV_PATH}:/tv
+      - ${DOWNLOADS_PATH}:/downloads
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${CONFIG_BASE}/radarr/config:/config
+      - ${MOVIES_PATH}:/movies
+      - ${DOWNLOADS_PATH}:/downloads
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${CONFIG_BASE}/prowlarr/config:/config
+    restart: unless-stopped
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Australia/Brisbane}
+    volumes:
+      - ${CONFIG_BASE}/jackett/config:/config
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ:-Australia/Brisbane}
+    restart: unless-stopped

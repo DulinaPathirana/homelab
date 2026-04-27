@@ -1,0 +1,82 @@
+# Nextcloud (FPM) behind nginx, with Postgres, Redis, and Cloudflare tunnel
+
+services:
+
+  nextcloud_db:
+    image: postgres:16-alpine
+    container_name: nextcloud_db
+    restart: unless-stopped
+    volumes:
+      - nextcloud_db:/var/lib/postgresql/data
+    env_file:
+      - db.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextcloud_redis:
+    image: redis:alpine
+    container_name: nextcloud_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nextcloud_app:
+    image: nextcloud:fpm-alpine
+    container_name: nextcloud_app
+    restart: unless-stopped
+    volumes:
+      - ${NEXTCLOUD_DATA_PATH}:/var/www/html
+    environment:
+      - POSTGRES_HOST=nextcloud_db
+      - REDIS_HOST=nextcloud_redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_DOMAIN}
+      - OVERWRITEPROTOCOL=https
+      - OVERWRITEHOST=${NEXTCLOUD_DOMAIN}
+    env_file:
+      - db.env
+    depends_on:
+      nextcloud_db:
+        condition: service_healthy
+      nextcloud_redis:
+        condition: service_healthy
+
+  nextcloud_web:
+    image: nginx:alpine-slim
+    container_name: nextcloud_web
+    restart: unless-stopped
+    ports:
+      - "${NEXTCLOUD_BIND_IP}:8082:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${NEXTCLOUD_DATA_PATH}:/var/www/html:ro
+    depends_on:
+      - nextcloud_app
+
+  nextcloud_cron:
+    image: nextcloud:fpm-alpine
+    container_name: nextcloud_cron
+    restart: unless-stopped
+    volumes:
+      - ${NEXTCLOUD_DATA_PATH}:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - nextcloud_app
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: nextcloud_cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    env_file:
+      - cloudflared.env
+    depends_on:
+      - nextcloud_web
+
+volumes:
+  nextcloud_db:
