@@ -1,5 +1,5 @@
 # Arr Stack — media automation routed through Gluetun VPN
-# All arr services use network_mode: service:gluetun so all traffic exits via VPN.
+# All arr services share the gluetun network so all traffic exits via VPN.
 
 services:
 
@@ -23,7 +23,7 @@ services:
       - FIREWALL_INPUT_PORTS=6881
     ports:
       - 8090:8090   # qBittorrent WebUI
-      - 6881:6881   # Torrent
+      - 6881:6881
       - 6881:6881/udp
       - 8989:8989   # Sonarr
       - 7878:7878   # Radarr

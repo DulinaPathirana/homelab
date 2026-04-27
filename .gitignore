@@ -1,8 +1,6 @@
-# Never commit real secrets
 .env
 db.env
 cloudflared.env
-
 *.log
 *.pid
 .vscode/
