@@ -50,7 +50,7 @@ These require custom builds or account-specific setup:
 | Service | Link |
 |---|---|
 | macless-haystack (AirTag network) | https://github.com/dchristl/macless-haystack |
-| ClawdBot (Claude AI gateway) | https://github.com/h3lls/clawdbot |
+| ClawdBot (Claude AI gateway) | https://openclaw.ai/ |
 
 ---
 
